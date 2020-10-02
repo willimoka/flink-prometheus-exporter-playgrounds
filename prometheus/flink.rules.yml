@@ -1,0 +1,22 @@
+groups:
+- name: ./rules.conf
+  rules:
+  - alert: flink-cancelled-jobs
+    expr: flink_overview_jobs_cancelled - flink_overview_jobs_cancelled offset 1m > 0
+    labels:
+      service: 'Data Platform'
+      severity: critical
+    annotations:
+      summary: 'Flink - There are some cancelled jobs'
+      description: 'There are increasing in number of cancelled jobs: {{ $value }}'
+      value: '{{ $value }}'
+  - alert: flink-read-bytes-total
+    expr: flink_read_bytes_total > 0
+    labels:
+      service: 'Data Platform'
+      severity: critical
+    annotations:
+      summary: 'Flink - Test'
+      description: 'Total read bytes: {{ $value }}'
+      value: '{{ $value }}'
+      

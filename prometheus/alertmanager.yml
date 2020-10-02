@@ -1,0 +1,32 @@
+global:
+  slack_api_url: 'https://hooks.slack.com/services/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'
+
+route:
+  receiver: 'flink-cancelled-jobs-notifications'
+  group_wait: 2m
+  group_interval: 3m
+  repeat_interval: 24h
+  routes:
+    - match:
+        alertname: flink-cancelled-jobs
+      group_by: ['job']
+      receiver: flink-cancelled-jobs-notifications
+    - match:
+        alertname: flink-read-bytes-total
+      group_by: ['job']
+      receiver: flink-read-bytes-total-notifications
+
+
+receivers:
+- name: 'flink-cancelled-jobs-notifications'
+  slack_configs:
+  - channel: '#test-me'
+    send_resolved: true
+    title: '{{ with index .Alerts 0 }}{{ if eq .Status "firing" }}{{ .Annotations.summary }}{{ else }}Flink - currently no cancelled jobs{{ end }}{{ end }}'
+    text: '{{ with index .Alerts 0 }}{{ if eq .Status "firing" }}{{ .Annotations.description }}{{ else }}Current cancelled jobs: There are increasing in number of cancelled jobs: {{ $value }}{{ end }}{{ end }}'
+- name: 'flink-read-bytes-total-notifications'
+  slack_configs:
+  - channel: '#test-me'
+    send_resolved: true
+    title: '{{ with index .Alerts 0 }}{{ if eq .Status "firing" }}{{ .Annotations.summary }}{{ else }}Flink - normal{{ end }}{{ end }}'
+    text: '{{ with index .Alerts 0 }}{{ if eq .Status "firing" }}{{ .Annotations.description }}{{ else }}normal{{ end }}{{ end }}'

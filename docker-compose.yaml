@@ -1,0 +1,108 @@
+version: "2.1"
+services:
+  client:
+    image: flink:1.11.0-scala_2.11
+    container_name: 'flink-job'
+    command: "flink run -d -p 2 /opt/resources/ClickCountJob.jar --bootstrap.servers kafka:9092 --checkpointing --event-time"
+    depends_on:
+      - jobmanager
+      - kafka
+    volumes:
+      - ./flink/conf:/opt/flink/conf
+      - ./resources:/opt/resources
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+  clickevent-generator:
+    image: flink:1.11.0-scala_2.11
+    container_name: 'flink-clickevent-generator'
+    command: "java -classpath /opt/resources/ClickCountJob.jar:/opt/flink/lib/* org.apache.flink.playgrounds.ops.clickcount.ClickEventGenerator --bootstrap.servers kafka:9092 --topic input"
+    depends_on:
+      - kafka
+    volumes:
+      - ./resources:/opt/resources
+  jobmanager:
+    image: flink:1.11.0-scala_2.11
+    container_name: 'flink-jobmanager'
+    hostname: jobmanager
+    command: "jobmanager.sh start-foreground"
+    ports:
+      - 8081:8081
+    volumes:
+      - ./flink/conf:/opt/flink/conf
+      - flink-checkpoints-directory:/tmp/flink-checkpoints-directory
+      - /tmp/flink-savepoints-directory:/tmp/flink-savepoints-directory
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+  taskmanager:
+    image: flink:1.11.0-scala_2.11
+    container_name: 'flink-taskmanager'
+    depends_on:
+      - jobmanager
+    command: "taskmanager.sh start-foreground"
+    volumes:
+      - ./flink/conf:/opt/flink/conf
+      - flink-checkpoints-directory:/tmp/flink-checkpoints-directory
+      - /tmp/flink-savepoints-directory:/tmp/flink-savepoints-directory
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+  zookeeper:
+    image: confluentinc/cp-zookeeper:5.4.1
+    container_name: 'zookeeper'
+    hostname: zookeeper
+    ports:
+      - 2181:2181
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+  kafka:
+    image: confluentinc/cp-kafka:5.4.1
+    container_name: 'kafka'
+    environment:
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://:9092,OUTSIDE://localhost:9094
+      KAFKA_LISTENERS: INSIDE://:9092,OUTSIDE://:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_CREATE_TOPICS: "input:2:1, output:2:1"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+    ports:
+      - 9094:9094
+  exporter:
+    image: ubuntu:latest
+    container_name: 'exporter'
+    command: flink_exporter --flink-job-manager-url http://jobmanager:8081/
+    ports:
+      - 9160:9160
+    depends_on:
+      - jobmanager
+    volumes:
+      - ./flink_exporter_bin/linux/amd64/flink_exporter:/bin/flink_exporter
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: 'prometheus'
+    ports:
+    - 9090:9090
+    volumes:
+    - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    - ./prometheus/flink.rules.yml:/etc/prometheus/flink.rules.yml
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: 'alertmanager'
+    volumes:
+      - ./prometheus:/prometheus
+      # - ./data/alertmanager:/data
+    command:
+      - '--config.file=/prometheus/alertmanager.yml'
+      # - '--storage.path=/data'
+    ports:
+      - 9093:9093
+  grafana:
+    build: './grafana'
+    container_name: 'grafana'
+    ports:
+      - '3000:3000'
+
+volumes:
+  flink-checkpoints-directory:
