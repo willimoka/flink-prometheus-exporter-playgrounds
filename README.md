@@ -72,7 +72,7 @@ How to submit job:
     ```
     curl http://localhost:8081/jobs
     ```
-* Delete job
+* Cancel/stop job
     ```
     curl http://localhost:8081/jobs/<job-id>/yarn-cancel
     ```
