@@ -44,7 +44,7 @@ Configuration for `slack_api_url` can be found on `./prometheus/alertmanager.yml
 
 # Deploy and Manage Flink Job through Airflow
 
-Flink job manager provide [Monitoring REST API](https://ci.apache.org/projects/flink/flink-docs-stable/monitoring/rest_api.html). It can be used for manage jobs on flink.
+Flink job manager provide [Monitoring REST API](https://ci.apache.org/projects/flink/flink-docs-stable/monitoring/rest_api.html). It can be used for managing jobs on flink.
 
 ## Example submit job or manage jobs through Flink REST API
 
